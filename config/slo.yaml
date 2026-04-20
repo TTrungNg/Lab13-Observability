@@ -2,15 +2,15 @@ service: day13-observability-lab
 window: 28d
 slis:
   latency_p95_ms:
-    objective: 3000
+    objective: 1500
     target: 99.5
-    note: Replace with your group's target
+    note: Optimized for high-speed AI interactions
   error_rate_pct:
-    objective: 2
-    target: 99.0
+    objective: 1
+    target: 99.9
   daily_cost_usd:
-    objective: 2.5
+    objective: 2.0
     target: 100.0
   quality_score_avg:
-    objective: 0.75
+    objective: 0.8
     target: 95.0
