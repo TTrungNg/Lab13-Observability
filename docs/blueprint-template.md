@@ -28,7 +28,7 @@
 ### 3.1 Logging & Tracing
 
 - [EVIDENCE_CORRELATION_ID_SCREENSHOT]: [screenshots/correlation_id.png]
-- [EVIDENCE_PII_REDACTION_SCREENSHOT]: [screenshots/pii_redaction.png]
+- [EVIDENCE_PII_REDACTION_SCREENSHOT]: [screenshots/redacted1/2/3.png]
 - [EVIDENCE_TRACE_WATERFALL_SCREENSHOT]: [screenshots/trace_waterfall.png]
 - [TRACE_WATERFALL_EXPLANATION]:
 
