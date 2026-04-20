@@ -10,14 +10,37 @@ try:
         """Shim for the old langfuse_context API (Langfuse v2) on Langfuse v3 SDK."""
 
         def update_current_trace(self, **kwargs: Any) -> None:
-            get_client().update_current_trace(**kwargs)
+            client = get_client()
+            update_trace = getattr(client, "update_current_trace", None)
+            if callable(update_trace):
+                update_trace(**kwargs)
+                return
+
+            # Compatibility fallback for SDK variants without update_current_trace.
+            metadata: dict[str, Any] = {}
+            for key in ("user_id", "session_id", "tags"):
+                value = kwargs.get(key)
+                if value is not None:
+                    metadata[f"trace_{key}"] = value
+
+            update_span = getattr(client, "update_current_span", None)
+            if callable(update_span):
+                update_span(metadata=metadata or None)
 
         def update_current_observation(self, **kwargs: Any) -> None:
             metadata = dict(kwargs.get("metadata") or {})
             usage = kwargs.get("usage_details")
             if usage is not None:
                 metadata["usage_details"] = usage
-            get_client().update_current_span(metadata=metadata or None)
+            client = get_client()
+            update_span = getattr(client, "update_current_span", None)
+            if callable(update_span):
+                update_span(metadata=metadata or None)
+                return
+
+            update_generation = getattr(client, "update_current_generation", None)
+            if callable(update_generation):
+                update_generation(metadata=metadata or None)
 
     langfuse_context = _LangfuseContext()
 
