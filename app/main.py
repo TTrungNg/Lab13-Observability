@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import os
 
 from dotenv import load_dotenv
@@ -13,12 +14,13 @@ if _lf_host:
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from structlog.contextvars import bind_contextvars
 
 from .agent import LabAgent
 from .incidents import disable, enable, status
 from .logging_config import configure_logging, get_logger
-from .metrics import record_error, snapshot
+from .metrics import get_history, record_error, record_snapshot, snapshot
 from .middleware import CorrelationIdMiddleware
 from .pii import hash_user_id, summarize_text
 from .schemas import ChatRequest, ChatResponse
@@ -30,9 +32,20 @@ app = FastAPI(title="Day 13 Observability Lab")
 app.add_middleware(CorrelationIdMiddleware)
 agent = LabAgent()
 
+_STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
+if os.path.isdir(_STATIC_DIR):
+    app.mount("/static", StaticFiles(directory=_STATIC_DIR), name="static")
+
+
+async def _snapshot_loop() -> None:
+    while True:
+        await asyncio.sleep(15)
+        record_snapshot()
+
 
 @app.on_event("startup")
 async def startup() -> None:
+    asyncio.create_task(_snapshot_loop())
     log.info(
         "app_started",
         service=os.getenv("APP_NAME", "day13-observability-lab"),
@@ -49,6 +62,11 @@ async def health() -> dict:
 @app.get("/metrics")
 async def metrics() -> dict:
     return snapshot()
+
+
+@app.get("/metrics/history")
+async def metrics_history() -> list:
+    return get_history()
 
 
 @app.post("/chat", response_model=ChatResponse)

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from collections import Counter
+import time
+from collections import Counter, deque
 from statistics import mean
 
 REQUEST_LATENCIES: list[int] = []
@@ -11,6 +12,9 @@ ERRORS: Counter[str] = Counter()
 TRAFFIC: int = 0
 QUALITY_SCORES: list[float] = []
 
+# 240 points × 15 s = 1 hour rolling window
+HISTORY: deque[dict] = deque(maxlen=240)
+
 
 def record_request(latency_ms: int, cost_usd: float, tokens_in: int, tokens_out: int, quality_score: float) -> None:
     global TRAFFIC
@@ -20,6 +24,7 @@ def record_request(latency_ms: int, cost_usd: float, tokens_in: int, tokens_out:
     REQUEST_TOKENS_IN.append(tokens_in)
     REQUEST_TOKENS_OUT.append(tokens_out)
     QUALITY_SCORES.append(quality_score)
+    record_snapshot()
 
 
 
@@ -38,6 +43,7 @@ def percentile(values: list[int], p: int) -> float:
 
 
 def snapshot() -> dict:
+    error_total = sum(ERRORS.values())
     return {
         "traffic": TRAFFIC,
         "latency_p50": percentile(REQUEST_LATENCIES, 50),
@@ -48,5 +54,16 @@ def snapshot() -> dict:
         "tokens_in_total": sum(REQUEST_TOKENS_IN),
         "tokens_out_total": sum(REQUEST_TOKENS_OUT),
         "error_breakdown": dict(ERRORS),
+        "error_total": error_total,
         "quality_avg": round(mean(QUALITY_SCORES), 4) if QUALITY_SCORES else 0.0,
     }
+
+
+def record_snapshot() -> None:
+    point = snapshot()
+    point["ts"] = round(time.time() * 1000)
+    HISTORY.append(point)
+
+
+def get_history() -> list[dict]:
+    return list(HISTORY)

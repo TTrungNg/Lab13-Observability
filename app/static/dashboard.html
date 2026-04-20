@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Day 13 — Observability Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, -apple-system, sans-serif; background: #0d1117; color: #c9d1d9; }
+
+    header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 24px; background: #161b22;
+      border-bottom: 1px solid #30363d;
+    }
+    header h1 { font-size: 1rem; font-weight: 600; color: #e6edf3; }
+    .meta { font-size: 0.78rem; color: #8b949e; display: flex; gap: 16px; align-items: center; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: #3fb950; display: inline-block; margin-right: 4px; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(520px, 1fr));
+      gap: 16px; padding: 20px;
+    }
+
+    .panel {
+      background: #161b22; border: 1px solid #30363d;
+      border-radius: 8px; padding: 16px 18px;
+    }
+    .panel-header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 10px; }
+    .panel-title { font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; color: #8b949e; }
+    .panel-unit  { font-size: 0.68rem; color: #484f58; }
+
+    .kpi-row { display: flex; gap: 20px; margin-bottom: 12px; flex-wrap: wrap; }
+    .kpi { display: flex; flex-direction: column; }
+    .kpi-label { font-size: 0.65rem; color: #8b949e; margin-bottom: 1px; }
+    .kpi-value { font-size: 1.35rem; font-weight: 700; color: #e6edf3; line-height: 1; }
+
+    .badge { font-size: 0.65rem; font-weight: 700; padding: 2px 7px; border-radius: 4px; margin-left: 6px; vertical-align: middle; }
+    .ok   { background: #0d3321; color: #3fb950; border: 1px solid #238636; }
+    .warn { background: #3d2900; color: #d29922; border: 1px solid #9e6a03; }
+    .bad  { background: #3d0000; color: #f85149; border: 1px solid #da3633; }
+
+    .breakdown { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+    .breakdown-item { font-size: 0.68rem; padding: 2px 8px; border-radius: 4px; background: #21262d; border: 1px solid #30363d; color: #c9d1d9; }
+
+    canvas { max-height: 160px; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Observability Dashboard &mdash; Day 13</h1>
+  <div class="meta">
+    <span><span class="dot"></span>Live</span>
+    <span>Range: 1 hour</span>
+    <span>Refresh: 15s</span>
+    <span id="last-ts">—</span>
+  </div>
+</header>
+
+<div class="grid">
+
+  <!-- Panel 1: Latency -->
+  <div class="panel">
+    <div class="panel-header">
+      <span class="panel-title">Latency P50 / P95 / P99</span>
+      <span class="panel-unit">ms &nbsp;|&nbsp; SLO: P95 ≤ 1500 ms</span>
+    </div>
+    <div class="kpi-row">
+      <div class="kpi"><span class="kpi-label">P50</span><span class="kpi-value" id="kpi-p50">—</span></div>
+      <div class="kpi"><span class="kpi-label">P95</span><span class="kpi-value" id="kpi-p95">—</span></div>
+      <div class="kpi"><span class="kpi-label">P99</span><span class="kpi-value" id="kpi-p99">—</span></div>
+      <div class="kpi" style="justify-content:flex-end"><span class="kpi-label">&nbsp;</span><span id="badge-latency"></span></div>
+    </div>
+    <canvas id="c-latency"></canvas>
+  </div>
+
+  <!-- Panel 2: Traffic -->
+  <div class="panel">
+    <div class="panel-header">
+      <span class="panel-title">Traffic — Request Count</span>
+      <span class="panel-unit">requests (cumulative)</span>
+    </div>
+    <div class="kpi-row">
+      <div class="kpi"><span class="kpi-label">Total</span><span class="kpi-value" id="kpi-traffic">—</span></div>
+    </div>
+    <canvas id="c-traffic"></canvas>
+  </div>
+
+  <!-- Panel 3: Error Rate with breakdown -->
+  <div class="panel">
+    <div class="panel-header">
+      <span class="panel-title">Error Rate &amp; Breakdown</span>
+      <span class="panel-unit">% &nbsp;|&nbsp; SLO: ≤ 1%</span>
+    </div>
+    <div class="kpi-row">
+      <div class="kpi"><span class="kpi-label">Error %</span><span class="kpi-value" id="kpi-errpct">—</span></div>
+      <div class="kpi"><span class="kpi-label">Total errors</span><span class="kpi-value" id="kpi-errtotal">—</span></div>
+      <div class="kpi" style="justify-content:flex-end"><span class="kpi-label">&nbsp;</span><span id="badge-error"></span></div>
+    </div>
+    <div class="breakdown" id="err-breakdown"></div>
+    <canvas id="c-error"></canvas>
+  </div>
+
+  <!-- Panel 4: Cost over time -->
+  <div class="panel">
+    <div class="panel-header">
+      <span class="panel-title">Cost Over Time</span>
+      <span class="panel-unit">USD (cumulative) &nbsp;|&nbsp; SLO: ≤ $2.00 / day</span>
+    </div>
+    <div class="kpi-row">
+      <div class="kpi"><span class="kpi-label">Total</span><span class="kpi-value" id="kpi-cost">—</span></div>
+      <div class="kpi"><span class="kpi-label">Avg / req</span><span class="kpi-value" id="kpi-avgcost">—</span></div>
+      <div class="kpi" style="justify-content:flex-end"><span class="kpi-label">&nbsp;</span><span id="badge-cost"></span></div>
+    </div>
+    <canvas id="c-cost"></canvas>
+  </div>
+
+  <!-- Panel 5: Tokens In/Out -->
+  <div class="panel">
+    <div class="panel-header">
+      <span class="panel-title">Tokens In / Out</span>
+      <span class="panel-unit">tokens (cumulative)</span>
+    </div>
+    <div class="kpi-row">
+      <div class="kpi"><span class="kpi-label">Tokens In</span><span class="kpi-value" id="kpi-tokin">—</span></div>
+      <div class="kpi"><span class="kpi-label">Tokens Out</span><span class="kpi-value" id="kpi-tokout">—</span></div>
+    </div>
+    <canvas id="c-tokens"></canvas>
+  </div>
+
+  <!-- Panel 6: Quality Score -->
+  <div class="panel">
+    <div class="panel-header">
+      <span class="panel-title">Quality Score (heuristic avg)</span>
+      <span class="panel-unit">score 0–1 &nbsp;|&nbsp; SLO: ≥ 0.8</span>
+    </div>
+    <div class="kpi-row">
+      <div class="kpi"><span class="kpi-label">Avg</span><span class="kpi-value" id="kpi-quality">—</span></div>
+      <div class="kpi" style="justify-content:flex-end"><span class="kpi-label">&nbsp;</span><span id="badge-quality"></span></div>
+    </div>
+    <canvas id="c-quality"></canvas>
+  </div>
+
+</div>
+
+<script>
+const SLO = { latency_p95: 1500, error_pct: 1, cost_day: 2.0, quality: 0.8 };
+
+const C = {
+  p50:'#58a6ff', p95:'#f0883e', p99:'#f85149',
+  traffic:'#7c6af5', error:'#f85149',
+  cost:'#3fb950', tokIn:'#a371f7', tokOut:'#ff7b72',
+  quality:'#ffa657', slo:'rgba(255,193,7,0.6)',
+};
+
+function sloLine(val) {
+  return {
+    type:'line', yMin:val, yMax:val,
+    borderColor: C.slo, borderWidth:2, borderDash:[6,4],
+    label:{ content:'SLO', display:true, position:'end', color:C.slo, font:{size:9} }
+  };
+}
+
+function makeChart(id, datasets, yUnit, sloVal) {
+  return new Chart(document.getElementById(id), {
+    type:'line',
+    data:{ labels:[], datasets },
+    options:{
+      animation:false, responsive:true, maintainAspectRatio:true,
+      interaction:{ mode:'index', intersect:false },
+      plugins:{
+        legend:{ labels:{ color:'#8b949e', boxWidth:10, font:{size:10} } },
+        annotation: sloVal !== undefined ? { annotations:{ slo: sloLine(sloVal) } } : {},
+      },
+      scales:{
+        x:{ ticks:{ color:'#484f58', maxTicksLimit:6, font:{size:9} }, grid:{ color:'#21262d' } },
+        y:{
+          title:{ display:!!yUnit, text:yUnit, color:'#484f58', font:{size:9} },
+          ticks:{ color:'#484f58', font:{size:9} },
+          grid:{ color:'#21262d' }, beginAtZero:true,
+        },
+      },
+    },
+  });
+}
+
+const latencyChart = makeChart('c-latency', [
+  { label:'P50', data:[], borderColor:C.p50, tension:.3, pointRadius:1, backgroundColor:'transparent' },
+  { label:'P95', data:[], borderColor:C.p95, tension:.3, pointRadius:1, backgroundColor:'transparent' },
+  { label:'P99', data:[], borderColor:C.p99, tension:.3, pointRadius:1, backgroundColor:'transparent' },
+], 'ms', SLO.latency_p95);
+
+const trafficChart = makeChart('c-traffic', [
+  { label:'Requests', data:[], borderColor:C.traffic, tension:.3, pointRadius:1,
+    backgroundColor:'rgba(124,106,245,0.1)', fill:true },
+], 'count');
+
+const errorChart = makeChart('c-error', [
+  { label:'Error %', data:[], borderColor:C.error, tension:.3, pointRadius:1,
+    backgroundColor:'rgba(248,81,73,0.1)', fill:true },
+], '%', SLO.error_pct);
+
+const costChart = makeChart('c-cost', [
+  { label:'Cost USD', data:[], borderColor:C.cost, tension:.3, pointRadius:1,
+    backgroundColor:'rgba(63,185,80,0.1)', fill:true },
+], 'USD', SLO.cost_day);
+
+const tokensChart = makeChart('c-tokens', [
+  { label:'Tokens In',  data:[], borderColor:C.tokIn,  tension:.3, pointRadius:1, backgroundColor:'transparent' },
+  { label:'Tokens Out', data:[], borderColor:C.tokOut, tension:.3, pointRadius:1, backgroundColor:'transparent' },
+], 'tokens');
+
+const qualityChart = makeChart('c-quality', [
+  { label:'Quality Avg', data:[], borderColor:C.quality, tension:.3, pointRadius:1,
+    backgroundColor:'rgba(255,166,87,0.1)', fill:true },
+], 'score', SLO.quality);
+
+function badge(cls, txt) {
+  return `<span class="badge ${cls}">${txt}</span>`;
+}
+function sloStatus(val, threshold, lowerBetter=false) {
+  const pass = lowerBetter ? val <= threshold : val >= threshold;
+  if (pass) return badge('ok','SLO OK');
+  const close = lowerBetter ? val <= threshold * 1.5 : val >= threshold * 0.9;
+  if (close) return badge('warn','SLO WARN');
+  return badge('bad','SLO BREACH');
+}
+
+function pushData(chart, label, ...vals) {
+  chart.data.labels.push(label);
+  vals.forEach((v,i) => chart.data.datasets[i].data.push(v));
+  chart.update('none');
+}
+
+function rebuildFromHistory(history) {
+  [latencyChart, trafficChart, errorChart, costChart, tokensChart, qualityChart].forEach(c => {
+    c.data.labels = [];
+    c.data.datasets.forEach(ds => ds.data = []);
+  });
+  history.forEach(pt => {
+    const t = new Date(pt.ts).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+    const ep = pt.traffic > 0 ? (pt.error_total / pt.traffic * 100) : 0;
+    pushData(latencyChart, t, pt.latency_p50, pt.latency_p95, pt.latency_p99);
+    pushData(trafficChart, t, pt.traffic);
+    pushData(errorChart,   t, parseFloat(ep.toFixed(2)));
+    pushData(costChart,    t, pt.total_cost_usd);
+    pushData(tokensChart,  t, pt.tokens_in_total, pt.tokens_out_total);
+    pushData(qualityChart, t, pt.quality_avg);
+  });
+}
+
+async function refresh() {
+  try {
+    const [snap, history] = await Promise.all([
+      fetch('/metrics').then(r => r.json()),
+      fetch('/metrics/history').then(r => r.json()),
+    ]);
+
+    document.getElementById('last-ts').textContent =
+      'Updated ' + new Date().toLocaleTimeString();
+
+    const errPct = snap.traffic > 0
+      ? parseFloat((snap.error_total / snap.traffic * 100).toFixed(2)) : 0;
+
+    // KPIs
+    document.getElementById('kpi-p50').textContent     = snap.latency_p50 + ' ms';
+    document.getElementById('kpi-p95').textContent     = snap.latency_p95 + ' ms';
+    document.getElementById('kpi-p99').textContent     = snap.latency_p99 + ' ms';
+    document.getElementById('badge-latency').innerHTML = sloStatus(snap.latency_p95, SLO.latency_p95, true);
+
+    document.getElementById('kpi-traffic').textContent = snap.traffic;
+
+    document.getElementById('kpi-errpct').textContent   = errPct + '%';
+    document.getElementById('kpi-errtotal').textContent = snap.error_total ?? 0;
+    document.getElementById('badge-error').innerHTML    = sloStatus(errPct, SLO.error_pct, true);
+
+    // Error breakdown tags
+    const bd = document.getElementById('err-breakdown');
+    bd.innerHTML = '';
+    const breakdown = snap.error_breakdown || {};
+    if (Object.keys(breakdown).length === 0) {
+      bd.innerHTML = '<span class="breakdown-item" style="color:#484f58">No errors</span>';
+    } else {
+      for (const [type, count] of Object.entries(breakdown)) {
+        bd.innerHTML += `<span class="breakdown-item">${type}: <b>${count}</b></span>`;
+      }
+    }
+
+    document.getElementById('kpi-cost').textContent    = '$' + snap.total_cost_usd.toFixed(4);
+    document.getElementById('kpi-avgcost').textContent = '$' + snap.avg_cost_usd.toFixed(6);
+    document.getElementById('badge-cost').innerHTML    = sloStatus(snap.total_cost_usd, SLO.cost_day, true);
+
+    document.getElementById('kpi-tokin').textContent   = snap.tokens_in_total.toLocaleString();
+    document.getElementById('kpi-tokout').textContent  = snap.tokens_out_total.toLocaleString();
+
+    document.getElementById('kpi-quality').textContent = snap.quality_avg.toFixed(3);
+    document.getElementById('badge-quality').innerHTML = sloStatus(snap.quality_avg, SLO.quality);
+
+    if (history.length > 0) rebuildFromHistory(history);
+
+  } catch (e) {
+    document.getElementById('last-ts').textContent = 'Fetch error — is the app running?';
+    console.error(e);
+  }
+}
+
+refresh();
+setInterval(refresh, 15000);
+</script>
+</body>
+</html>
