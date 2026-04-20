@@ -6,7 +6,7 @@
 - [GROUP_NAME]: 
 - [REPO_URL]: 
 - [MEMBERS]:
-  - Member A: [Name] | Role: Logging & PII
+  - Member A: Hà Việt Khánh | Role: Logging & PII
   - Member B: [Name] | Role: Tracing & Enrichment
   - Member C: [Name] | Role: SLO & Alerts
   - Member D: [Name] | Role: Load Test & Dashboard
@@ -55,9 +55,12 @@
 
 ## 5. Individual Contributions & Evidence
 
-### [MEMBER_A_NAME]
+### Hà Việt Khánh
 - [TASKS_COMPLETED]: 
-- [EVIDENCE_LINK]: (Link to specific commit or PR)
+  - Triển khai Middleware (Correlation ID): Viết `CorrelationIdMiddleware` xử lý `x-request-id` và truyền vào `structlog.contextvars` để đồng bộ log xuyên suốt ứng dụng.
+  - Cấu hình Structlog: Cài đặt pipeline processor cho Structlog sinh log định dạng JSON, tự động thêm ISO timestamp, cấp độ log và lưu xuất ra `data/logs.jsonl` qua `JsonlFileProcessor`.
+  - Phát triển bộ lọc dữ liệu ẩn danh (PII): Viết các regex rules trong `app/pii.py` để tra cứu và ẩn (redact) email, CCCD, địa chỉ VN và tích hợp logger processor `scrub_event` để gỡ bỏ thông tin nhạy cảm trước khi in log.
+- [EVIDENCE_LINK]: Các lịch sử thay đổi file `app/middleware.py`, `app/logging_config.py`, `app/pii.py`
 
 ### [MEMBER_B_NAME]
 - [TASKS_COMPLETED]: 
