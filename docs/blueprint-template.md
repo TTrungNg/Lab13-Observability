@@ -87,10 +87,14 @@ Thời gian thực thi ngắn (0.15s) cho thấy hệ thống đang hoạt độ
   - Soạn thảo Runbook chi tiết trong `docs/alerts.md` hướng dẫn xử lý sự cố dựa trên bằng chứng log và trace.
 - [EVIDENCE_LINK]: config/slo.yaml, config/alert_rules.yaml, docs/alerts.md
 
-### [MEMBER_D_NAME]
+### [MEMBER_D_NAME] Mã Khoa Học
 
 - [TASKS_COMPLETED]:
-- [EVIDENCE_LINK]:
+  - Inject incident theo vai trò "phá hoại" bằng `scripts/inject_incident.py` cho các kịch bản `rag_slow`, `tool_fail`, `cost_spike`; xác nhận bật/tắt sự cố thành công qua API `/incidents/{scenario}/enable|disable`.
+  - Thực hiện load test theo vai trò "kiểm định" bằng `scripts/load_test.py --concurrency N` để tạo tải đồng thời, quan sát status code/correlation_id/latency và tái hiện triệu chứng khi sự cố được bật.
+  - Validate chất lượng log sau test bằng `scripts/validate_logs.py`, kiểm tra schema, enrichment, correlation ID propagation và PII leak; ghi nhận kết quả pass trong báo cáo nhóm.
+  - Lưu lại kết quả chạy script thành công vào dữ liệu theo dõi (`data/logs.jsonl`) và đưa vào commit phục vụ chấm điểm/đối soát.
+- [EVIDENCE_LINK]: scripts/inject_incident.py, scripts/load_test.py, scripts/validate_logs.py, data/logs.jsonl
 
 ### [MEMBER_E_NAME] [Nguyễn Việt Trung]
 
