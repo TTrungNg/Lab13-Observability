@@ -8,9 +8,9 @@
 - [REPO_URL]: https://github.com/TTrungNg/Lab13-Observability
 - [MEMBERS]:
   - Member A: [Name] Hà Việt Khánh | Role: Logging & PII
-  - Member B: [Name] | Role: Tracing & Enrichment
+  - Member B: [Name] Trần Ngô Hồng Hà | Role: Tracing & Enrichment
   - Member C: [Name] Nguyễn Tuấn Kiệt | Role: SLO & Alerts
-  - Member D: [Name] | Role: Load Test
+  - Member D: [Name] Mã Khoa Học | Role: Load Test
   - Member E: [Name] Nguyễn Việt Trung | Role: Dashboard & Report
 
 ---
@@ -27,9 +27,9 @@
 
 ### 3.1 Logging & Tracing
 
-- [EVIDENCE_CORRELATION_ID_SCREENSHOT]: [Path to image]
-- [EVIDENCE_PII_REDACTION_SCREENSHOT]: [Path to image]
-- [EVIDENCE_TRACE_WATERFALL_SCREENSHOT]: [Path to image]
+- [EVIDENCE_CORRELATION_ID_SCREENSHOT]: [screenshots/correlation_id.png]
+- [EVIDENCE_PII_REDACTION_SCREENSHOT]: [screenshots/pii_redaction.png]
+- [EVIDENCE_TRACE_WATERFALL_SCREENSHOT]: [screenshots/trace_waterfall.png]
 - [TRACE_WATERFALL_EXPLANATION]:
 
 Trace trên Langfuse cho thấy chỉ có một span duy nhất là "run" với tổng thời gian thực thi 0.15 giây. Span "run" đại diện cho toàn bộ quá trình xử lý của agent từ lúc nhận input đến khi trả về output.
@@ -38,7 +38,7 @@ Thời gian thực thi ngắn (0.15s) cho thấy hệ thống đang hoạt độ
 
 ### 3.2 Dashboard & SLOs
 
-- [DASHBOARD_6_PANELS_SCREENSHOT]: [Path to image]
+- [DASHBOARD_6_PANELS_SCREENSHOT]: [screenshots/dashboard.png]
 - [SLO_TABLE]:
   | SLI | Target | Window | Current Value |
   |---|---:|---|---:|
@@ -49,8 +49,8 @@ Thời gian thực thi ngắn (0.15s) cho thấy hệ thống đang hoạt độ
 
 ### 3.3 Alerts & Runbook
 
-- [ALERT_RULES_SCREENSHOT]: [Path to image]
-- [SAMPLE_RUNBOOK_LINK]: [docs/alerts.md#L...]
+- [ALERT_RULES_SCREENSHOT]: [screenshots/alert_rules.png]
+- [SAMPLE_RUNBOOK_LINK]: [docs/alerts.md]
 
 ---
 
