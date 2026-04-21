@@ -77,7 +77,15 @@ Thời gian thực thi ngắn (0.15s) cho thấy hệ thống đang hoạt độ
 ### [MEMBER_B_NAME]
 
 - [TASKS_COMPLETED] :
-- [EVIDENCE_LINK] :
+  - Triển khai Langfuse Tracing: Tích hợp :contentReference[oaicite:0]{index=0} vào hệ thống để theo dõi toàn bộ quá trình thực thi của AI Agent và ghi nhận trace cho mỗi request.
+  - Tạo Nested Spans: Sử dụng decorator `@observe` để xây dựng cấu trúc cây (Tree view) gồm các span như `run`, `retrieval`, `llm-generation`, giúp phân tích chi tiết từng bước xử lý.
+  - Gắn Tags và Metadata: Cấu hình tags và metadata cho trace để hỗ trợ việc lọc, phân tích và debug hệ thống hiệu quả hơn.
+  - Xây dựng module tracing: implement tracing logic trong `app/tracing.py` để quản lý logic tracing, cấu hình Langfuse client và hỗ trợ flush trace.
+  - Mô phỏng LLM: Tạo `app/mock_llm.py` nhằm giả lập quá trình gọi LLM và tạo span `llm-generation` phục vụ kiểm thử trace.
+  - Tích hợp tracing vào Agent: Thêm decorator `@observe` vào các tầng logic trong `app/agent.py` để tạo nested spans và hiển thị waterfall trace.
+
+- [EVIDENCE_LINK] :app/agent.py, app/tracing.py, app/mock_llm.py
+
 
 ### [MEMBER_C_NAME] Nguyễn Tuấn Kiệt
 
